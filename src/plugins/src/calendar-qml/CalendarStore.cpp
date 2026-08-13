@@ -369,37 +369,37 @@ bool CalendarStore::editAllInPlace(const Event& master, const QVariantMap& field
     if (newRec != master.recurrence) {
         clearRrule(ve);
         if (newRec != Recurrence::None) {
-            ical::RecurrencePtr rule = ical::wrapRecurrence(icalrecurrencetype_new());
-            rule->freq = toIcalFreq(newRec);
-            rule->interval = 1;
-            QDate until = fields.value(QStringLiteral("recurrenceUntil")).toDate();
-            if (until.isValid()) {
-                icaltimetype u = icaltime_null_date();
-                u.year = until.year(); u.month = until.month(); u.day = until.day();
-                u.is_date = 1;
-                rule->until = u;
-            }
-            icalcomponent_add_property(ve, icalproperty_new_rrule(rule.get()));
-        }
+    struct icalrecurrencetype rule;
+    icalrecurrencetype_clear(&rule);
+    rule.freq = toIcalFreq(newRec);
+    rule.interval = 1;
+    QDate until = fields.value(QStringLiteral("recurrenceUntil")).toDate();
+    if (until.isValid()) {
+        icaltimetype u = icaltime_null_date();
+        u.year = until.year(); u.month = until.month(); u.day = until.day();
+        u.is_date = 1;
+        rule.until = u;
+    }
+    icalcomponent_add_property(ve, icalproperty_new_rrule(rule));
+}
     } else if (newRec != Recurrence::None) {
         // Recurrence keyword unchanged, but UNTIL might have changed.
         // Update UNTIL on the existing RRULE if user provided one.
         QDate newUntil = fields.value(QStringLiteral("recurrenceUntil")).toDate();
         if (newUntil != master.recurrenceUntil) {
             // Read existing rule, modify UNTIL, write back
-            icalproperty* rp = icalcomponent_get_first_property(ve, ICAL_RRULE_PROPERTY);
+           icalproperty* rp = icalcomponent_get_first_property(ve, ICAL_RRULE_PROPERTY);
             if (rp) {
-                if (struct icalrecurrencetype* rule = icalproperty_get_rrule(rp)) {  // borrowed
-                    if (newUntil.isValid()) {
-                        icaltimetype u = icaltime_null_date();
-                        u.year = newUntil.year(); u.month = newUntil.month(); u.day = newUntil.day();
-                        u.is_date = 1;
-                        rule->until = u;
-                    } else {
-                        rule->until = icaltime_null_time();
-                    }
-                    icalproperty_set_rrule(rp, rule);
+                struct icalrecurrencetype rule = icalproperty_get_rrule(rp);  // by value
+                if (newUntil.isValid()) {
+                    icaltimetype u = icaltime_null_date();
+                    u.year = newUntil.year(); u.month = newUntil.month(); u.day = newUntil.day();
+                    u.is_date = 1;
+                    rule.until = u;
+                } else {
+                    rule.until = icaltime_null_time();
                 }
+                icalproperty_set_rrule(rp, rule);
             }
         }
     }
